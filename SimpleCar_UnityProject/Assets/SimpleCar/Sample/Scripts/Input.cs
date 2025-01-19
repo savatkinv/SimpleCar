@@ -5,11 +5,12 @@ namespace SimpleCar.Sample
 {
     public class Input : MonoBehaviour
     {
-        [SerializeField] private PlayerInput playerInput;
-        [SerializeField] private float steer;
-        [SerializeField] private float accel;
-        [SerializeField] private float brake;
         [SerializeField] private Car car;
+        [SerializeField] private PlayerInput playerInput;
+
+        private float steer;
+        private float accel;
+        private float brake;
 
         public void OnMove(InputAction.CallbackContext context)
         {
