@@ -4,7 +4,8 @@ namespace SimpleCar
 {
     public class Car : MonoBehaviour
     {
-        [SerializeField] private float distanceWheel = 1f;
+        [SerializeField] private float targetWheelDistance = 1f;
+        [SerializeField] private float minWheelDistance = 0.5f;
         [SerializeField] private float suspension = 300f;
         [SerializeField] private float suspensionDamper = 30f;
         [SerializeField] private float tireGripFactor = 0.2f;
@@ -117,13 +118,13 @@ namespace SimpleCar
 
             float wheelRotation = torque * wheelTorgueRotationSpeed * Time.fixedDeltaTime;
 
-            float hitDistance = distanceWheel;
-            if (Physics.Raycast(wheelBase.position, -wheelBase.up, out hit, distanceWheel, groundMask))
+            float hitDistance = targetWheelDistance;
+            if (Physics.Raycast(wheelBase.position, -wheelBase.up, out hit, targetWheelDistance, groundMask))
             {
                 // suspension
                 hitDistance = hit.distance;
 
-                float offset = distanceWheel - hitDistance;
+                float offset = targetWheelDistance - hitDistance;
                 float vel = Vector3.Dot(springDir, wheelWorldVel);
                 float force = offset * suspension - vel * suspensionDamper;
 
@@ -164,7 +165,9 @@ namespace SimpleCar
                 wheelRotation = carSpeed * wheelRotationSpeed * Time.fixedDeltaTime;
             }
 
-            wheel.position = wheelBase.position - wheelBase.up * (hitDistance - wheelRadius);
+            float wheelOffset = Mathf.Clamp(hitDistance, minWheelDistance, targetWheelDistance) - wheelRadius;
+            
+            wheel.position = wheelBase.position - wheelBase.up * wheelOffset;
 
             wheel.Rotate(wheelRotation, 0, 0);
         }
@@ -173,7 +176,7 @@ namespace SimpleCar
         {
             for (int i = 0; i < wheels.Length; i++)
             {
-                wheels[i].position = suspensions[i].position - suspensions[i].up * (distanceWheel - wheelRadius);
+                wheels[i].position = suspensions[i].position - suspensions[i].up * (targetWheelDistance - wheelRadius);
             }
         }
     }
