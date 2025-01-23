@@ -77,13 +77,12 @@ MonoBehaviour:
   targetWheelDistance: 1
   minWheelDistance: 0.5
   suspension: 300
-  suspensionDamper: 30
-  tireGripFactor: 0.2
-  tireMass: 5
+  suspensionDamper: 20
+  tireGrip: 0.8
   steerAngle: 30
-  carMaxSpeed: 15
+  carMaxSpeed: 20
   accelSpeed: 75
-  brakeForce: 1
+  brakeForce: 0.1
   wheelRadius: 0.5
   wheelRotationSpeed: 90
   wheelTorgueRotationSpeed: 30
@@ -101,17 +100,17 @@ MonoBehaviour:
       inWeight: 0
       outWeight: 0.05752038
     - serializedVersion: 3
-      time: 0.6309199
-      value: 0.96130633
-      inSlope: -0.286104
-      outSlope: -0.286104
+      time: 0.5103806
+      value: 0.97815216
+      inSlope: -0.29404908
+      outSlope: -0.29404908
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.069883056
+      inWeight: 0.032205734
+      outWeight: 0.08378278
     - serializedVersion: 3
       time: 1
-      value: 0.9
+      value: 0.8
       inSlope: -0.0467337
       outSlope: -0.0467337
       tangentMode: 0
@@ -183,6 +182,39 @@ MonoBehaviour:
       tangentMode: 0
       weightedMode: 0
       inWeight: 0.05814302
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  brakeCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -6.1019344
+      outSlope: -6.1019344
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.067125425
+    - serializedVersion: 3
+      time: 0.1710341
+      value: 0.37479633
+      inSlope: -1.3581015
+      outSlope: -1.3581015
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.02852311
+    - serializedVersion: 3
+      time: 1
+      value: 0.02
+      inSlope: -0.0000004864979
+      outSlope: -0.0000004864979
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.038286805
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
