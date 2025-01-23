@@ -32,10 +32,15 @@ namespace SimpleCar
 
         private float currentAccel = 0f;
         private float currentBrake = 0f;
-
         private float currentSpeed = 0f;
         private float currentGrip = 0f;
-        private float currentVelocity = 0f;
+        private float currentForwardVelocity = 0f;
+
+        private const float accelUpLerpSpeed = 2f; 
+        private const float accelDownLerpSpeed = 4f;
+        private const float accelMin = -0.5f;
+        private const float accelMax = 1f;
+        private const float accelE = 0.01f;
 
         private class CarInput
         {
@@ -46,12 +51,13 @@ namespace SimpleCar
         private CarInput carInput;
 
         public float Speed => currentSpeed;
+        public float SpeedPerHour => currentSpeed * carMaxSpeed;
 
         public void Move(float steer, float accel, float brake)
         {
             carInput.steer = steer;
             carInput.accel = accel;
-            currentBrake = brake > 0 ? Mathf.Lerp(currentBrake, 1f, Time.deltaTime) : 0f;
+            carInput.brake = brake;
         }
 
         private void Start()
@@ -63,13 +69,15 @@ namespace SimpleCar
 
         private void Update()
         {
-            Control();
+            SteerControl();
+            AccelControl();
+            BrakeControl();
         }
 
         private void FixedUpdate()
         {
-            currentVelocity = Vector3.Dot(transform.forward, rb.linearVelocity);
-            currentSpeed = Mathf.Clamp01(Mathf.Abs(currentVelocity) / carMaxSpeed);
+            currentForwardVelocity = Vector3.Dot(transform.forward, rb.linearVelocity);
+            currentSpeed = Mathf.Clamp01(Mathf.Abs(currentForwardVelocity) / carMaxSpeed);
             currentGrip = gripCurve.Evaluate(currentSpeed) * tireGrip;
 
             for (int i = 0; i < wheels.Length; i++)
@@ -78,7 +86,7 @@ namespace SimpleCar
             }
         }
 
-        private void Control()
+        private void SteerControl()
         {
             float steer = carInput.steer * steerAngle * steerCurve.Evaluate(currentSpeed);
 
@@ -91,20 +99,26 @@ namespace SimpleCar
             {
                 s.localRotation = Quaternion.Euler(0, -steer, 0);
             }
+        }
 
-            if (carInput.accel > 0)
+        private void AccelControl()
+        {
+            if (carInput.accel == 0)
             {
-                currentAccel = Mathf.Lerp(currentAccel, 1f, Time.deltaTime * 2f);
-            } else if (carInput.accel < 0)
-            {
-                currentAccel = Mathf.Lerp(currentAccel, -0.5f, Time.deltaTime * 4f);
+                currentAccel = Mathf.Abs(currentAccel) < accelE ? 0 : Mathf.Lerp(currentAccel, 0f, Time.deltaTime);
             } else
             {
-                currentAccel = Mathf.Lerp(currentAccel, 0f, Time.deltaTime);
-
-                if (Mathf.Abs(currentAccel) < 0.01f)
-                    currentAccel = 0f;
+                currentAccel = Mathf.Lerp(
+                    currentAccel,
+                    carInput.accel > 0 ? accelMax : accelMin,
+                    Time.deltaTime * (carInput.accel > 0 ? accelUpLerpSpeed : accelDownLerpSpeed)
+                    );
             }
+        }
+
+        private void BrakeControl()
+        {
+            currentBrake = carInput.brake > 0 ? Mathf.Lerp(currentBrake, 1f, Time.deltaTime) : 0f;
 
             if (currentBrake > 0)
             {
@@ -139,7 +153,7 @@ namespace SimpleCar
                 // acceleration
                 if (currentBrake > 0)
                 {
-                    torque = -Mathf.Sign(currentVelocity) * currentSpeed * accelSpeed;
+                    torque = -Mathf.Sign(currentForwardVelocity) * currentSpeed * accelSpeed;
 
                     // brake force
                     float brakeForce = -Vector3.Dot(wheelBase.forward, wheelWorldVel) / Time.fixedDeltaTime * brakeCurve.Evaluate(currentSpeed) * currentBrake;
@@ -148,9 +162,9 @@ namespace SimpleCar
                 else
                 {
                     // fix max speed
-                    if (Mathf.Abs(currentVelocity) > carMaxSpeed)
+                    if (Mathf.Abs(currentForwardVelocity) > carMaxSpeed)
                     {
-                        if (currentAccel * currentVelocity > 0)
+                        if (currentAccel * currentForwardVelocity > 0)
                         {
                             torque = 0f;
                         }
@@ -158,14 +172,14 @@ namespace SimpleCar
 
                     if (Mathf.Abs(currentAccel) < 0.01f)
                     {
-                        torque = -Mathf.Sign(currentVelocity) * currentSpeed * accelSpeed;
+                        torque = -Mathf.Sign(currentForwardVelocity) * currentSpeed * accelSpeed;
                     }
                 }
 
                 // torque force
                 rb.AddForceAtPosition(wheelBase.forward * torque, wheelBase.position, ForceMode.Force);
 
-                wheelRotation = Mathf.Lerp(currentVelocity * wheelRotationSpeed, 0f, currentBrake * 8f);
+                wheelRotation = Mathf.Lerp(currentForwardVelocity * wheelRotationSpeed, 0f, currentBrake * 8f);
             }
 
             float wheelOffset = Mathf.Clamp(hitDistance, minWheelDistance, targetWheelDistance) - wheelRadius;
