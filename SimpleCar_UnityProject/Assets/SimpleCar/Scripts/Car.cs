@@ -34,7 +34,7 @@ namespace SimpleCar
         private float currentBrake = 0f;
         private float currentSpeed = 0f;
         private float currentGrip = 0f;
-        private float currentForwardVelocity = 0f;
+        private float currentVelocity = 0f;
 
         private const float accelUpLerpSpeed = 2f; 
         private const float accelDownLerpSpeed = 4f;
@@ -76,13 +76,13 @@ namespace SimpleCar
 
         private void FixedUpdate()
         {
-            currentForwardVelocity = Vector3.Dot(transform.forward, rb.linearVelocity);
-            currentSpeed = Mathf.Clamp01(Mathf.Abs(currentForwardVelocity) / carMaxSpeed);
+            currentVelocity = Vector3.Dot(transform.forward, rb.linearVelocity);
+            currentSpeed = Mathf.Clamp01(Mathf.Abs(currentVelocity) / carMaxSpeed);
             currentGrip = gripCurve.Evaluate(currentSpeed) * tireGrip;
 
             for (int i = 0; i < wheels.Length; i++)
             {
-                UpdateWheel(suspensions[i], wheels[i]);
+                UpdateWheel(suspensions[i], wheels[i], Mathf.Abs(carInput.accel));
             }
         }
 
@@ -126,67 +126,79 @@ namespace SimpleCar
             }
         }
 
-        private void UpdateWheel(Transform wheelBase, Transform wheel)
+        private void UpdateWheel(Transform wheelBase, Transform wheel, float absAccel)
         {
-            Vector3 springDir = wheelBase.up;
-            Vector3 wheelWorldVel = rb.GetPointVelocity(wheelBase.position);
-
             float torqueSpeed = torqueCurve.Evaluate(currentSpeed) * accelSpeed * currentAccel;
-            float torque = torqueSpeed * Mathf.Abs(carInput.accel);
-            float wheelRotation = torqueSpeed * wheelTorgueRotationSpeed;
-
             float hitDistance = targetWheelDistance;
+            bool hasContact = false;
+
             if (Physics.Raycast(wheelBase.position, -wheelBase.up, out hit, targetWheelDistance, groundMask))
             {
                 hitDistance = hit.distance;
+                hasContact = true;
+            }
 
-                // suspension
-                float offset = targetWheelDistance - hitDistance;
-                float suspensionRelativeVelocity = Vector3.Dot(springDir, wheelWorldVel);
-                float suspensionForce = offset * suspension - suspensionRelativeVelocity * suspensionDamper;
-                rb.AddForceAtPosition(suspensionForce * springDir, wheelBase.position, ForceMode.Force);
+            if (hasContact)
+            {
+                Vector3 wheelWorldVel = rb.GetPointVelocity(wheelBase.position);
 
-                // grip
-                float desiredVelChange = -Vector3.Dot(wheelBase.right, wheelWorldVel) * currentGrip / Time.fixedDeltaTime;
-                rb.AddForceAtPosition(desiredVelChange * wheelBase.right, wheelBase.position, ForceMode.Force);
-
-                // acceleration
-                if (currentBrake > 0)
-                {
-                    torque = -Mathf.Sign(currentForwardVelocity) * currentSpeed * accelSpeed;
-
-                    // brake force
-                    float brakeForce = -Vector3.Dot(wheelBase.forward, wheelWorldVel) / Time.fixedDeltaTime * brakeCurve.Evaluate(currentSpeed) * currentBrake;
-                    rb.AddForceAtPosition(brakeForce * wheelBase.forward, wheelBase.position, ForceMode.Force);
-                }
-                else
-                {
-                    // fix max speed
-                    if (Mathf.Abs(currentForwardVelocity) > carMaxSpeed)
-                    {
-                        if (currentAccel * currentForwardVelocity > 0)
-                        {
-                            torque = 0f;
-                        }
-                    }
-
-                    if (Mathf.Abs(currentAccel) < 0.01f)
-                    {
-                        torque = -Mathf.Sign(currentForwardVelocity) * currentSpeed * accelSpeed;
-                    }
-                }
-
-                // torque force
-                rb.AddForceAtPosition(wheelBase.forward * torque, wheelBase.position, ForceMode.Force);
-
-                wheelRotation = Mathf.Lerp(currentForwardVelocity * wheelRotationSpeed, 0f, currentBrake * 8f);
+                AddSuspensionForce(wheelBase, wheelWorldVel, hitDistance);
+                AddGripForce(wheelBase, wheelWorldVel);
+                AddAccelerationForce(wheelBase, wheelWorldVel, torqueSpeed * absAccel);
             }
 
             float wheelOffset = Mathf.Clamp(hitDistance, minWheelDistance, targetWheelDistance) - wheelRadius;
-            
             wheel.position = wheelBase.position - wheelBase.up * wheelOffset;
 
+            float wheelRotation = hasContact ?
+                Mathf.Lerp(currentVelocity * wheelRotationSpeed, 0f, currentBrake * 8f) :
+                torqueSpeed * wheelTorgueRotationSpeed;
             wheel.Rotate(wheelRotation * Time.fixedDeltaTime, 0, 0);
+        }
+
+        private void AddSuspensionForce(Transform wheelBase, Vector3 wheelWorldVel, float hitDistance)
+        {
+            float offset = targetWheelDistance - hitDistance;
+            float suspensionRelativeVelocity = Vector3.Dot(wheelBase.up, wheelWorldVel);
+            float suspensionForce = offset * suspension - suspensionRelativeVelocity * suspensionDamper;
+
+            rb.AddForceAtPosition(suspensionForce * wheelBase.up, wheelBase.position, ForceMode.Force);
+        }
+
+        private void AddGripForce(Transform wheelBase, Vector3 wheelWorldVel)
+        {
+            float desiredVelChange = -Vector3.Dot(wheelBase.right, wheelWorldVel) * currentGrip / Time.fixedDeltaTime;
+
+            rb.AddForceAtPosition(desiredVelChange * wheelBase.right, wheelBase.position, ForceMode.Force);
+        }
+
+        private void AddAccelerationForce(Transform wheelBase, Vector3 wheelWorldVel, float wheelTorque)
+        {
+            if (currentBrake > 0)
+            {
+                wheelTorque = -Mathf.Sign(currentVelocity) * currentSpeed * accelSpeed;
+
+                float brake = brakeCurve.Evaluate(currentSpeed) * currentBrake;
+                float brakeForce = -Vector3.Dot(wheelBase.forward, wheelWorldVel) * brake;
+                rb.AddForceAtPosition(brakeForce * wheelBase.forward / Time.fixedDeltaTime, wheelBase.position, ForceMode.Force);
+            }
+            else
+            {
+                if (Mathf.Abs(currentVelocity) > carMaxSpeed)
+                {
+                    if (currentAccel * currentVelocity > 0)
+                    {
+                        wheelTorque = 0f;
+                    }
+                }
+
+                if (Mathf.Abs(currentAccel) < 0.01f)
+                {
+                    wheelTorque = -Mathf.Sign(currentVelocity) * currentSpeed * accelSpeed;
+                }
+            }
+
+            rb.AddForceAtPosition(wheelBase.forward * wheelTorque, wheelBase.position, ForceMode.Force);
         }
 
         private void OnValidate()
