@@ -57,7 +57,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 0
@@ -76,13 +76,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetWheelDistance: 1
   minWheelDistance: 0.5
-  suspension: 300
+  suspension: 250
   suspensionDamper: 20
-  tireGrip: 0.8
-  steerAngle: 30
-  carMaxSpeed: 20
-  accelSpeed: 75
-  brakeForce: 0.1
+  tireGrip: 0.5
+  steerAngle: 35
+  carMaxSpeed: 25
+  accelSpeed: 50
+  brakeForce: 0.5
   wheelRadius: 0.5
   wheelRotationSpeed: 90
   wheelTorgueRotationSpeed: 30
@@ -236,6 +236,11 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 1
+  gravity: {x: 0, y: -9.8, z: 0}
+  antiGravityForce: 1
+  directionChangeBrake: 0.15
+  directionChangeAccelSpeed: 7
+  directionChangeStopSpeed: 5
 --- !u!1 &326186776341393213
 GameObject:
   m_ObjectHideFlags: 0
