@@ -12,7 +12,7 @@ namespace SimpleCar
         [SerializeField] private float steerAngle = 45f;
         [SerializeField] private float carMaxSpeed = 15f;
         [SerializeField] private float accelSpeed = 50f;
-        [SerializeField] [Range(0f, 1f)] private float brakeForce = 1f;
+        [SerializeField] private float brakeForce = 3f;
         [SerializeField] private float wheelRadius = 0.5f;
         [SerializeField] private float wheelRotationSpeed = 90f;
         [SerializeField] private float wheelTorgueRotationSpeed = 3f;
@@ -27,13 +27,9 @@ namespace SimpleCar
         [SerializeField] private Transform[] inverseSteeringSuspensions;
         [SerializeField] private LayerMask groundMask;
         [SerializeField] private Vector3 gravity;
-        [SerializeField] private float antiGravityForce = 0;
-
-        [Header("Direction Change")]
-        [SerializeField] private float directionChangeBrake = 0.75f;
-        [SerializeField] private float directionChangeAccelSpeed = 12f;
-        [SerializeField] private float directionChangeStopSpeed = 0.5f;
-
+        [SerializeField] private float antiGravityForce = 1;
+        [SerializeField] private float directionChangeForce = 10f;
+        
         private Rigidbody rb;
         private RaycastHit hit;
 
@@ -124,14 +120,7 @@ namespace SimpleCar
             }
 
             float targetAccel = carInput.accel > 0 ? accelMax : accelMin;
-
-            bool changingDirection =
-                Mathf.Abs(currentVelocity) > directionChangeStopSpeed &&
-                Mathf.Sign(carInput.accel) != Mathf.Sign(currentVelocity);
-
-            float changeSpeed = changingDirection
-                ? directionChangeAccelSpeed
-                : (carInput.accel > 0 ? accelUpLerpSpeed : accelDownLerpSpeed);
+            float changeSpeed = (carInput.accel > 0 ? accelUpLerpSpeed : accelDownLerpSpeed);
 
             currentAccel = Mathf.MoveTowards(
                 currentAccel,
@@ -142,11 +131,11 @@ namespace SimpleCar
 
         private void BrakeControl()
         {
-            currentBrake = carInput.brake > 0 ? Mathf.Lerp(currentBrake, 1f, Time.deltaTime) : 0f;
+            currentBrake = carInput.brake > 0 ? Mathf.Lerp(currentBrake, 1f, Time.deltaTime * 4f) : 0f;
 
             if (currentBrake > 0)
             {
-                currentAccel = Mathf.Lerp(currentAccel, 0f, Time.deltaTime * brakeForce);
+                currentAccel = Mathf.Lerp(currentAccel, 0f, Time.deltaTime * 4f);
             }
         }
 
@@ -155,11 +144,14 @@ namespace SimpleCar
             float torqueSpeed = torqueCurve.Evaluate(currentSpeed) * accelSpeed * currentAccel;
             float hitDistance = targetWheelDistance;
             bool hasContact = false;
+            float normalForce = 1f;
 
             if (Physics.Raycast(wheelBase.position, -wheelBase.up, out hit, targetWheelDistance, groundMask))
             {
                 hitDistance = hit.distance;
                 hasContact = true;
+                normalForce = Mathf.Clamp01(Mathf.Abs(hit.normal.y));
+                torqueSpeed *= normalForce;
             }
 
             if (hasContact)
@@ -167,7 +159,7 @@ namespace SimpleCar
                 Vector3 wheelWorldVel = rb.GetPointVelocity(wheelBase.position);
 
                 AddSuspensionForce(wheelBase, wheelWorldVel, hitDistance);
-                AddGripForce(wheelBase, wheelWorldVel);
+                AddGripForce(wheelBase, wheelWorldVel, normalForce *normalForce);
                 AddAccelerationForce(wheelBase, wheelWorldVel, torqueSpeed);
             }
 
@@ -191,49 +183,47 @@ namespace SimpleCar
             Debug.DrawLine(wheelBase.position, wheelBase.position + suspensionForce * wheelBase.up * 0.05f, Color.red, Time.fixedDeltaTime);
         }
 
-        private void AddGripForce(Transform wheelBase, Vector3 wheelWorldVel)
+        private void AddGripForce(Transform wheelBase, Vector3 wheelWorldVel, float normalForce)
         {
-            float desiredVelChange = -Vector3.Dot(wheelBase.right, wheelWorldVel) * currentGrip / Time.fixedDeltaTime;
+            float desiredVelChange = -Vector3.Dot(wheelBase.right, wheelWorldVel) 
+                * currentGrip * normalForce * normalForce / Time.fixedDeltaTime;
 
             rb.AddForceAtPosition(desiredVelChange * wheelBase.right, wheelBase.position, ForceMode.Force);
 
             Debug.DrawLine(wheelBase.position, wheelBase.position + desiredVelChange * wheelBase.right * 0.05f, Color.green, Time.fixedDeltaTime);
 
-
             // fix gravity force
             Vector3 grip = -Vector3.Dot(wheelBase.right, wheelWorldVel) * wheelBase.right;
             Vector3 antiGravity = grip.normalized;
 
-            if (antiGravity.y > 0.1f)
+            if (antiGravity.y > 0.05f)
             {
                 Debug.DrawLine(wheelBase.position + wheelBase.up * 0.5f, wheelBase.position + wheelBase.up * 0.5f + antiGravity, Color.yellow, Time.fixedDeltaTime);
-                rb.AddForce(antiGravity * Time.fixedDeltaTime * gravity.magnitude * antiGravity.y / wheels.Length * antiGravityForce, ForceMode.VelocityChange);
+                rb.AddForce(antiGravity * Time.fixedDeltaTime * gravity.magnitude * antiGravity.y / wheels.Length * antiGravityForce * normalForce, ForceMode.VelocityChange);
             }
         }
 
         private void AddAccelerationForce(Transform wheelBase, Vector3 wheelWorldVel, float wheelTorque)
         {
             bool changingDirection =
-                Mathf.Abs(currentVelocity) > directionChangeStopSpeed &&
                 Mathf.Abs(carInput.accel) > accelE &&
                 Mathf.Sign(carInput.accel) != Mathf.Sign(currentVelocity);
 
             if (currentBrake > 0)
             {
-                float brake = brakeCurve.Evaluate(currentSpeed) * currentBrake;
-
-                float brakeVelocity = Vector3.Dot(wheelBase.forward, wheelWorldVel);
-                float brakeForce = -brakeVelocity * brake / Time.fixedDeltaTime;
+                float brake = brakeCurve.Evaluate(currentSpeed) * currentBrake * brakeForce;
+                float forwardVelocity = Vector3.Dot(wheelBase.forward, wheelWorldVel.normalized);
+                float brakeVelocity = -Mathf.Sign(forwardVelocity) * brake / Time.fixedDeltaTime;
 
                 rb.AddForceAtPosition(
-                    wheelBase.forward * brakeForce,
+                    wheelBase.forward * brakeVelocity,
                     wheelBase.position,
                     ForceMode.Force
                 );
 
                 Debug.DrawLine(
                     wheelBase.position,
-                    wheelBase.position + wheelBase.forward * brakeForce * 0.05f,
+                    wheelBase.position + wheelBase.forward * brakeVelocity * 0.05f,
                     Color.white,
                     Time.fixedDeltaTime
                 );
@@ -243,12 +233,9 @@ namespace SimpleCar
 
             if (changingDirection)
             {
-                float forwardVelocity = Vector3.Dot(wheelBase.forward, wheelWorldVel);
+                float forwardVelocity = Vector3.Dot(wheelBase.forward, wheelWorldVel.normalized);
 
-                float brakeForce =
-                    -forwardVelocity *
-                    directionChangeBrake /
-                    Time.fixedDeltaTime;
+                float brakeForce = -Mathf.Sign(forwardVelocity) * directionChangeForce / Time.fixedDeltaTime;
 
                 rb.AddForceAtPosition(
                     wheelBase.forward * brakeForce,

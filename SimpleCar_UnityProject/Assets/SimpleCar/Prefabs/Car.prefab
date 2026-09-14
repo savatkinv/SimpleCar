@@ -77,12 +77,12 @@ MonoBehaviour:
   targetWheelDistance: 1
   minWheelDistance: 0.5
   suspension: 250
-  suspensionDamper: 20
+  suspensionDamper: 50
   tireGrip: 0.5
   steerAngle: 35
-  carMaxSpeed: 25
-  accelSpeed: 50
-  brakeForce: 0.5
+  carMaxSpeed: 15
+  accelSpeed: 75
+  brakeForce: 10
   wheelRadius: 0.5
   wheelRotationSpeed: 90
   wheelTorgueRotationSpeed: 30
@@ -125,13 +125,13 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0.75
-      inSlope: -0.22006662
-      outSlope: -0.22006662
+      value: 2
+      inSlope: -9.746743
+      outSlope: -9.746743
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.119272135
+      outWeight: 0.034060217
     - serializedVersion: 3
       time: 0.52714646
       value: 1
@@ -191,30 +191,30 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
-      inSlope: -6.1019344
-      outSlope: -6.1019344
-      tangentMode: 0
+      value: 0
+      inSlope: 0
+      outSlope: 4
+      tangentMode: 69
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.067125425
+      outWeight: 0.33333334
     - serializedVersion: 3
-      time: 0.1710341
-      value: 0.37479633
-      inSlope: -1.3581015
-      outSlope: -1.3581015
-      tangentMode: 0
+      time: 0.25
+      value: 1
+      inSlope: 0.22222224
+      outSlope: 0.22222224
+      tangentMode: 1
       weightedMode: 0
       inWeight: 0.33333334
-      outWeight: 0.02852311
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 1
-      value: 0.02
-      inSlope: -0.0000004864979
-      outSlope: -0.0000004864979
-      tangentMode: 0
+      value: 0.2
+      inSlope: -1.0666667
+      outSlope: -1.0666667
+      tangentMode: 34
       weightedMode: 0
-      inWeight: 0.038286805
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -238,9 +238,7 @@ MonoBehaviour:
     m_Bits: 1
   gravity: {x: 0, y: -9.8, z: 0}
   antiGravityForce: 1
-  directionChangeBrake: 0.15
-  directionChangeAccelSpeed: 7
-  directionChangeStopSpeed: 5
+  directionChangeForce: 3
 --- !u!1 &326186776341393213
 GameObject:
   m_ObjectHideFlags: 0
